@@ -32,7 +32,7 @@ We propose *Kinema4D*, a new *action-conditioned **4D** generative robotic simul
 <div align="center">
 A sample result is shown below:
 
-<video src="https://mutianxu.github.io/Kinema4D-project-page/static/videos/all_results/01_ours.mp4" controls="controls" width="50%" height="auto">
+<video src="/assests/sample_result_new.mp4" controls="controls" width="50%" height="auto">
 </video>
 </div>
 
