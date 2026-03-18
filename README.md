@@ -30,8 +30,7 @@
 We propose *Kinema4D*, a new *action-conditioned **4D** generative robotic simulator*. Given an initial world image with a robot at a canonical setup space, and an action sequence, our method generates *future robot-world interactions* in 4D space. A sample result is shown below:
 
 <div align="center">
-<video src="assests/sample_result_new.mp4" controls="controls" width="50%" height="auto">
-</video>
+<img src="assests/sample_result.gif" width="50%" height="auto">
 </div>
 
 ##
