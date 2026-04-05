@@ -842,17 +842,3 @@ class Trainer:
                     output_dir=self.args.output_dir,
                 )
                 self.accelerator.save_state(save_path, safe_serialization=True)
-
-                if global_step == 5200:
-                    special_save_path = os.path.join(
-                        self.args.output_dir, 
-                        f"checkpoint-step-{global_step}-permanent"
-                    )
-                    self.accelerator.save_state(special_save_path, safe_serialization=True)
-
-                if global_step == 5600:
-                    special_save_path = os.path.join(
-                        self.args.output_dir, 
-                        f"checkpoint-step-{global_step}-permanent"
-                    )
-                    self.accelerator.save_state(special_save_path, safe_serialization=True)
