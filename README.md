@@ -67,17 +67,14 @@ Please download our **Robo4D-200k** dataset from [here](https://huggingface.co/d
 The data should be organized in the following structure:
 
 ```
-data/
-├── videos/
-│   ├── xxx.mp4
-├── pointmap/
-│   ├── xxx.mp4
-├── mask_videos/
-│   ├── xxx.mp4
-├── mask_pointmap/
-│   ├── xxx.mp4
-├── train_shuffled.txt
-├── train_img_shuffled.txt
+data_dir/
+├── first_frames/     <n>.png   ← first-frame images
+├── videos/           <n>.mp4   ← original RGB videos
+├── pointmap/         <n>.mp4   ← point-map videos           
+├── mask_videos/      <n>.mp4   ← robot-only RGB videos
+├── mask_pointmap/    <n>.mp4   ← robot-only point-map videos
+├── train_shuffled.txt          ← training episode video ID
+└── train_img_shuffled.txt      ← training episode first_frame ID
 ```
 
 #### Binary mask preparation
@@ -89,7 +86,50 @@ python save_mask.py
 ```
 
 #### VAE latents preparation
-Please wait for the update, will be released very soon.
+Encode raw videos, point maps, and their masked variants into VAE latents, and extract CLIP image embeddings from the first frame.
+
+### Usage
+
+**Single machine, 4 GPUs:**
+ 
+```bash
+python encode_latents.py \
+    --data-dir    /path/to/dataset \
+    --out         /path/to/latents \
+    --model-path  ./pretrained/Wan2.1-I2V-14B-480P-Diffusers \
+    --num-gpus 4 \
+    --max-frames 49 \
+    --resolution-h 480 --resolution-w 720 \
+    --skip-existing
+```
+ 
+**Multi-machine (e.g. 4 machines, 8 GPUs each):**
+ 
+```bash
+python encode_latents.py \
+    --num-machines 4 --machine-id 0 --num-gpus 8 \
+    --data-dir /path/to/dataset \
+    --out      /path/to/latents \
+    --model-path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers \
+    --skip-existing
+```
+
+
+### Output Structure
+
+```
+data_dir/
+├── video_latents/
+│   ├── xxx.safetensors
+├── pointmap_latents/
+│   ├── xxx.pt
+├── mask_video_latents/
+│   ├── xxx.safetensors
+└── mask_pointmap_latents/
+    ├── xxx.pt
+```
+
+---
 <!-- Run the command below to preprocess it:
 
 ```bash
@@ -121,6 +161,14 @@ To launch training, we assume all data, mask array, VAE latents are fully prepar
 ```bash
 bash scripts/finetune.sh
 ```
+
+**Cross-machine training**: take 4 machines + 8gpus/machine as an example (we have provided the corresponding config `gpu_1,2,3,4.yaml` in `configs_acc` folder). In `finetune.sh`: 
+- Set the `--main_process_ip` into the actual ip address of your master machine for all machines
+- Set the `--machine_rank` into the actual rank of each machine (e.g., 0 for the master machine; 1 or 2 or 3 for other 3 machines)
+- Set the `--num_processes` into 32 for all machines
+- Set the `--num_machines` into 4 for all machines
+- Leave all the other configs unchanged and respectively running the previous command on each machine
+
 
 🌟**NOTE**: At the first-time training, a cache folder for saving text embedding will be created.
 Although the text embedding is not used in our model, we leave the code here to better align with the general video generation model codebase for future explorations on how to better use text beyond action-conditioned simulation, such as text-conditioned task planning.
