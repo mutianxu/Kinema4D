@@ -77,8 +77,7 @@ data_dir/
 ├── mask_videos/      <n>.mp4   ← robot-only RGB videos
 ├── mask_pointmap/    <n>.mp4   ← robot-only point-map videos
 ├── train_shuffled.txt          ← training episode video ID
-├── train_img_shuffled.txt      ← training episode first_frame ID
-└── val_sel.txt                 ← selected validation episode ID
+└── train_img_shuffled.txt      ← training episode first_frame ID
 ```
 
 #### Robot-occupancy mask preparation
