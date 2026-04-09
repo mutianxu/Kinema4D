@@ -687,7 +687,7 @@ class WanSameRopeWBWImageToVideoPipeline(WanImageToVideoPipeline):
 
         return latents, condition
 
-class WanI2VDembSameRopeTrainer_act(Trainer):
+class WanI2VDembSameRopeTrainer_act_pmcond(Trainer):
     UNLOAD_LIST = ["text_encoder", "image_encoder", "image_processor"]
 
     @override
@@ -933,4 +933,4 @@ class WanI2VDembSameRopeTrainer_act(Trainer):
 
         return loss
 
-register("wan-i2v-demb-samerope-act", "lora", WanI2VDembSameRopeTrainer_act)
+register("wan-i2v-demb-samerope-act-pmcond", "lora", WanI2VDembSameRopeTrainer_act_pmcond)

@@ -13,6 +13,9 @@
 <a href="https://huggingface.co/datasets/Minoday/Robo4D-200k" target="_blank">
   <img alt="Hugging Face" src="https://img.shields.io/badge/🤗_HuggingFace-Dataset-yellow.svg" height="20" />
 </a>
+<a href="https://huggingface.co/Minoday/Kinema4D" target="_blank">
+  <img alt="Hugging Face" src="https://img.shields.io/badge/🤗_HuggingFace-Model-blue.svg" height="20" />
+</a>
 <br>
 
 ***[Mutian Xu<sup>1</sup>](https://mutianxu.github.io/), [Tianbao Zhang<sup>2</sup>](https://mutianxu.github.io/), <br>[Tianqi Liu<sup>1</sup>](https://tqtqliu.github.io/), [Zhaoxi Chen<sup>1</sup>](https://frozenburning.github.io/), [Xiaoguang Han<sup>2</sup>](https://gaplab.cuhk.edu.cn/), [Ziwei Liu<sup>1†</sup>](https://liuziwei7.github.io/)***
@@ -27,14 +30,15 @@
   </a>
 </p>
 
+
 We propose *Kinema4D*, a new *action-conditioned **4D** generative robotic simulator*. Given an initial world image with a robot at a canonical setup space, and an action sequence, our method generates *future robot-world interactions* in 4D space. A sample result is shown below:
 
 <div align="center">
 <img src="assests/sample_result.gif" width="50%" height="auto">
 </div>
 
-##
-Official PyTorch Implementation.
+## 📢 News
+Official PyTorch implementation and checkpoints are all released. (Apr.9, 2026) 🔥🔥🔥
 
 ## 🚧 TODO List
 - [x] Robo4D-200k Dataset
@@ -43,7 +47,7 @@ Official PyTorch Implementation.
 - [x] Data Preprocessing Scripts
 - [x] Model Checkpoints
 
-## 🚀 Quick Start
+## 💪 Get Started
 
 ### Environment Setup
 We use anaconda or miniconda to manage the python environment:
@@ -131,7 +135,7 @@ After finish processing, the total data volume is ~**7TB**. Please leave suffici
 ### Data pre-processing *from scratch (Optional)*
 In addition, we provide the *full* data pre-processing code in the [data_proc_full](https://github.com/mutianxu/Kinema4D/blob/main/data_proc_full) folder. It includes our whole data pre-processing pipeline on real-world demonstration datasets, associated with the corresponding instructions.
 
-## 🔥 Training
+## 🚀 Usage
 
 ### Pretrained Model
 Our model is developed on top of [Wan2.1 I2V 14B](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers) and [4DNeX](https://huggingface.co/FrozenBurning/4DNex-Lora), please download all the pretrained models from Hugging Face and place it in the `pretrained` directory as following structure:
@@ -158,7 +162,7 @@ To launch training, we assume all data, mask array, VAE latents are fully prepar
 bash scripts/finetune.sh
 ```
 
-**Model-type choice**: We provide our model conditioned on [robot RGB+pointmap](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/models/wan_i2v/demb_samerope_trainer_act_allcond.py) and [only robot pointmap](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/models/wan_i2v/demb_samerope_trainer_act_pmcond.py). 
+**Model-type choice**: We provide our model conditioned on [robot RGB+pointmap](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/models/wan_i2v/demb_samerope_trainer_act.py) and [only robot pointmap](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/models/wan_i2v/demb_samerope_trainer_act_pmcond.py). 
 
 Generally, to get stable results on our pseudo-annotated robot data (e.g., DROID, Bridge, RT-1), you may choose the condition of robot RGB+pointmap by setting `--model_name wan-i2v-demb-samerope-act` in `finetune.sh` (by default).
 
@@ -197,7 +201,7 @@ cd ../..
 export KINEMA4D_CKPT_PATH=./training/kinema4d_ckpt
 ```
 
-After setup the environment and pretrained model, you can run the following command to generate full 4D robot-world interactions from a single image, the output video and point map will be saved in the `OUTPUT_DIR` directory. Run the following command:
+After setup the environment and trained models, you can run the following command to generate full 4D robot-world interactions from a single image, the output video and point map will be saved in the `OUTPUT_DIR` directory. Run the following command:
 ```bash
 export OUTPUT_DIR=./results
 python inference.py --data_path /path/to/robo4d200k/ --video /path/to/robo4d200k/val.txt --out $OUTPUT_DIR --sft_path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers/transformer  --type i2vwbw-demb-samerope-act --mode xyzrgb --lora_path $KINEMA4D_CKPT_PATH --lora_rank 64
