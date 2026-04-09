@@ -127,7 +127,6 @@ class BaseWanDataset(Dataset):
         prompt_embeddings_dir = cache_dir / "prompt_embeddings"
         prompt_embeddings_dir.mkdir(parents=True, exist_ok=True)
         video_latent_dir = self.trainer.args.data_root / "video_latents"
-        img_latent_dir = self.trainer.args.data_root / "image_embeddings"
         arm_video_latent_dir = self.trainer.args.data_root / "mask_video_latents"
         pm_latent_dir = self.trainer.args.data_root / "pointmap_latents"
         arm_pm_latent_dir = self.trainer.args.data_root / "mask_pointmap_latents"
@@ -136,7 +135,6 @@ class BaseWanDataset(Dataset):
         prompt_hash = str(hashlib.sha256(prompt.encode()).hexdigest())
         prompt_embedding_path = prompt_embeddings_dir / (prompt_hash + ".safetensors")
         encoded_video_path = video_latent_dir / (video_name + ".safetensors")
-        encoded_img_path = img_latent_dir / (video_name + ".safetensors")
         encoded_arm_video_path = arm_video_latent_dir / (video_name + ".safetensors")
         encoded_pm_path = pm_latent_dir / (video_name + ".pt")
         encoded_arm_pm_path = arm_pm_latent_dir / (video_name + ".pt")
@@ -161,16 +159,10 @@ class BaseWanDataset(Dataset):
         if encoded_video_path.exists():
             loaded = load_file(encoded_video_path)
             encoded_video = loaded["encoded_video"]
-            # image_embedding = loaded["image_embedding"]
+            image_embedding = loaded["image_embedding"]
             logger.debug(f"Loaded encoded video and image embedding from {encoded_video_path}", main_process_only=False)
         else:
             raise FileNotFoundError(f"Encoded video file not found: {encoded_video_path}")
-        
-        if encoded_img_path.exists():
-            loaded_img = load_file(encoded_img_path)
-            image_embedding = loaded_img["image_embedding"]
-        else:
-            raise FileNotFoundError(f"Encoded image file not found: {encoded_img_path}")
 
         # Load encoded pointmap
         if encoded_pm_path.exists():
@@ -201,7 +193,6 @@ class BaseWanDataset(Dataset):
         encoded_pm_mean = -0.17
         encoded_pm_std = 1.36
         encoded_pm = (encoded_pm - encoded_pm_mean) / encoded_pm_std
-        # encoded_video = torch.concat([encoded_video, encoded_pm], -1)
         # HACK: train on the first 49 frames
         encoded_video = torch.concat([encoded_video[:, :13, :, :], encoded_pm[:, :13, :, :]], -1) # 13 denotes the first 13 VAE-compressed latents, corresponding to original first 49 frames
         image = torch.concat([image, self.uniform_pointmap], -1)

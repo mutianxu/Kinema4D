@@ -42,6 +42,7 @@ from diffusers.models.modeling_utils import ModelMixin
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
+
 class WanAttnProcessor2_0:
     def __init__(self):
         if not hasattr(F, "scaled_dot_product_attention"):
@@ -58,7 +59,7 @@ class WanAttnProcessor2_0:
         encoder_hidden_states_img = None
         if attn.add_k_proj is not None:
             # 624 is the context length of the arm encoder, hardcoded for now
-            image_context_length = encoder_hidden_states.shape[1] - 624
+            image_context_length = encoder_hidden_states.shape[1] - 312
             encoder_hidden_states_img = encoder_hidden_states[:, :image_context_length]
             encoder_hidden_states = encoder_hidden_states[:, image_context_length:]
         if encoder_hidden_states is None:
@@ -361,7 +362,6 @@ class WanTransformer3DModelDembSameRope(WanTransformer3DModel, ModelMixin):
         self.arm_post_patch_height = 60 // patch_size_arm[1]
         self.arm_post_patch_width = 90 // patch_size_arm[2]
         self.arm_pos_emb = nn.Parameter(torch.zeros(1, bottleneck_dim, self.arm_post_patch_num_frames, self.arm_post_patch_height, self.arm_post_patch_width)) # only for one domain, repeat later
-        self.arm_domain_emb = nn.Parameter(torch.zeros(2, bottleneck_dim))
         self.arm_patch_proj = nn.Linear(bottleneck_dim, inner_dim)
 
         self.arm_cond_proj = nn.Linear(16, 16)
@@ -391,14 +391,14 @@ class WanTransformer3DModelDembSameRope(WanTransformer3DModel, ModelMixin):
                 )
 
         arm_cond_ori = attention_kwargs['arm_cond'].to(hidden_states)
-        arm_cond = arm_cond_ori[:, :, 1:, :, :] # B, 20, 12, 60, 180, exclude the first frame
+        arm_cond = arm_cond_ori  # B, 20, 13, 60, 90
         arm_cond_mask = arm_cond[:, :4, :, :, :]
         arm_cond_feat = arm_cond[:, 4:, :, :, :]
         arm_cond_feat = self.arm_cond_proj(arm_cond_feat.permute(0, 2, 3, 4, 1)).permute(0, 4, 1, 2, 3) # zero-init proj, to avoid break pretrained feature
         hidden_states_trans = torch.zeros_like(hidden_states)
-        hidden_states_trans[:, 20:, 1:, :, :] = arm_cond_feat  # replace feat with zero-init arm_cond feat
+        hidden_states_trans[:, 20:, :, :, hidden_states_trans.shape[4]//2:] = arm_cond_feat  # replace feat with zero-init arm_cond feat
         hidden_states += hidden_states_trans  # noisy feat add 0 (no change), cond feat add zero-init arm_cond feat
-        hidden_states[:, 16:20, 1:, :, :] = arm_cond_mask # replace mask with arm_cond_mask
+        hidden_states[:, 16:20, :, :, hidden_states.shape[4]//2:] = arm_cond_mask # replace mask with arm_cond_mask
 
         batch_size, num_channels, num_frames, height, width = hidden_states.shape # B, 36, 13, 60, 180
         # encoder_hidden_states.shape: B, N 512, C 4096, 512 denotes text token length
@@ -430,9 +430,7 @@ class WanTransformer3DModelDembSameRope(WanTransformer3DModel, ModelMixin):
         encoder_hidden_states_arm = self.patch_embedding_arm(arm_cond_ori)
         encoder_hidden_states_arm = self.arm_ln(encoder_hidden_states_arm.permute(0, 2, 3, 4, 1))
         encoder_hidden_states_arm = self.arm_act(encoder_hidden_states_arm).permute(0, 4, 1, 2, 3)
-        first_half_domain_emb_arm, second_half_domain_emb_arm = self.arm_domain_emb.chunk(2, dim=0)
-        encoder_hidden_states_arm = torch.cat([encoder_hidden_states_arm[:, :, :, :, :self.arm_post_patch_width] + self.arm_pos_emb + first_half_domain_emb_arm[..., None, None, None], 
-            encoder_hidden_states_arm[:, :, :, :, self.arm_post_patch_width:] + self.arm_pos_emb + second_half_domain_emb_arm[..., None, None, None]], dim=4)
+        encoder_hidden_states_arm = encoder_hidden_states_arm + self.arm_pos_emb
         encoder_hidden_states_arm = encoder_hidden_states_arm.flatten(2).transpose(1, 2)  # B, N 35100 = F*H/p_size*W/p_size = 13 * 60/2 * 180/2, C 5120; so later regard all spatial/temporal token as individuals for attention
         encoder_hidden_states_arm = self.arm_patch_proj(encoder_hidden_states_arm)
 
@@ -492,10 +490,6 @@ class WanTransformer3DModelDembSameRope(WanTransformer3DModel, ModelMixin):
                 model.arm_pos_emb = nn.Parameter(torch.zeros(model.arm_pos_emb.shape, dtype=model.dtype)).to(model.device)
                 nn.init.trunc_normal_(model.arm_pos_emb, std=0.02)
                 logger.info("Convert Meta learnable arm positional embeddings to norm_init.")
-            if model.arm_domain_emb.is_meta:
-                model.arm_domain_emb = nn.Parameter(torch.zeros(model.arm_domain_emb.shape, dtype=model.dtype)).to(model.device)
-                nn.init.trunc_normal_(model.arm_domain_emb, std=0.02)
-                logger.info("Convert Meta learnable arm domain embeddings to norm_init.")
 
             for name, module in model.named_modules(): # convert Meta weight or bias in action_encoder and attn_act to zeros.
                 if hasattr(module, 'weight') and isinstance(module.weight, torch.Tensor):
@@ -649,6 +643,7 @@ class WanSameRopeWBWImageToVideoPipeline(WanImageToVideoPipeline):
         latent_condition = latent_condition.to(dtype)
         latent_condition = (latent_condition - latents_mean) * latents_std
 
+        # retrieve arm video latent
         arm_latent_condition = self._attention_kwargs['arm_latent'].to(latent_condition) # B, C, 13, latent_h, latent_w
 
         # for mask on original zero-pad (to avoid break the pretrained weights)
@@ -687,7 +682,8 @@ class WanSameRopeWBWImageToVideoPipeline(WanImageToVideoPipeline):
         arm_mask_lat_size = arm_mask_lat_size.repeat(1, 1, 1, 1, 2) # broadcast mask to another width dimension for pointmap
         arm_mask_lat_size = arm_mask_lat_size.to(arm_latent_condition) # [B, vae_scale_factor_temporal, 21, H_latent, W_latent]
         arm_cond = torch.concat([arm_mask_lat_size, arm_latent_condition], dim=1) # 0.5 mask will be concat with the first latent condition
-        self._attention_kwargs['arm_cond'] = arm_cond
+        arm_cond_pm = arm_cond[:, :, :, :, arm_cond.shape[4]//2:]
+        self._attention_kwargs['arm_cond'] = arm_cond_pm
 
         return latents, condition
 
@@ -909,7 +905,8 @@ class WanI2VDembSameRopeTrainer_act(Trainer):
         arm_mask_lat_size = arm_mask_lat_size.repeat(1, 1, 1, 1, 2) # broadcast mask to another width dimension for pointmap
         arm_mask_lat_size = arm_mask_lat_size.to(arm_latent_condition) # [B, vae_scale_factor_temporal, 21, H_latent, W_latent]
         arm_cond = torch.concat([arm_mask_lat_size, arm_latent_condition], dim=1) # 0.5 mask will be concat with the first latent condition
-        action_condition['arm_cond'] = arm_cond
+        arm_cond_pm = arm_cond[:, :, :, :, arm_cond.shape[4]//2:]
+        action_condition['arm_cond'] = arm_cond_pm
 
         # Sample a random timestep for each sample
         timesteps_idx = torch.randint(0, self.components.scheduler.config.num_train_timesteps, (batch_size,))

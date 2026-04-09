@@ -129,7 +129,7 @@ def generate_video(
             transformer.learnable_domain_embeddings.data = learnable_domain_embeddings.to(transformer.device, transformer.dtype)
             print(f"Loaded learnable_domain_embeddings from {lora_path}")
         elif generate_type == "i2vwbw-demb-samerope-act":
-            from core.finetune.models.wan_i2v.demb_samerope_trainer_act_noact_armpmcond import WanTransformer3DModelDembSameRope
+            from core.finetune.models.wan_i2v.demb_samerope_trainer_act import WanTransformer3DModelDembSameRope
             transformer = WanTransformer3DModelDembSameRope.from_pretrained(sft_path, torch_dtype=dtype)
             assert lora_path is not None, "Lora path is required for i2vwbw-demb-samerope"
             
@@ -187,16 +187,15 @@ def generate_video(
 
         prompt = ''
         
-        # Load encoded arm video and image embedding
+        # Load robot arm video/latents and get mask
         arm_loaded = load_file(encoded_arm_video_path)
         encoded_video_arm = arm_loaded["encoded_video"]
-        print(f"Loaded encoded arm video and image embedding from {encoded_arm_video_path}")
+        print(f"Loaded encoded arm video embedding from {encoded_arm_video_path}")
 
-        # Load encoded arm pointmap
+        # Load encoded robot arm pointmap
         encoded_pm_arm = torch.load(encoded_arm_pm_path, map_location='cpu', weights_only=True)
         print(f"Loaded encoded arm point map from {encoded_arm_pm_path}")
 
-        # Load arm video/latents and get mask
         encoded_pm_mean = -0.17
         encoded_pm_std = 1.36
         encoded_pm_arm = (encoded_pm_arm - encoded_pm_mean) / encoded_pm_std

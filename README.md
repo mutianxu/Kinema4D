@@ -10,9 +10,9 @@
 <a href="https://mutianxu.github.io/Kinema4D-project-page/" target="_blank">
     <img alt="Github" src="https://img.shields.io/badge/⚒️_Project-page-white.svg" height="20" />
 </a>
-<!-- <a href="https://huggingface.co/ymhao/LoFA_v0" target="_blank">
-  <img alt="Hugging Face" src="https://img.shields.io/badge/🤗_HuggingFace-LoFA-yellow.svg" height="20" />
-</a> -->
+<a href="https://huggingface.co/datasets/Minoday/Robo4D-200k" target="_blank">
+  <img alt="Hugging Face" src="https://img.shields.io/badge/🤗_HuggingFace-Dataset-yellow.svg" height="20" />
+</a>
 <br>
 
 ***[Mutian Xu<sup>1</sup>](https://mutianxu.github.io/), [Tianbao Zhang<sup>2</sup>](https://mutianxu.github.io/), <br>[Tianqi Liu<sup>1</sup>](https://tqtqliu.github.io/), [Zhaoxi Chen<sup>1</sup>](https://frozenburning.github.io/), [Xiaoguang Han<sup>2</sup>](https://gaplab.cuhk.edu.cn/), [Ziwei Liu<sup>1†</sup>](https://liuziwei7.github.io/)***
@@ -34,15 +34,14 @@ We propose *Kinema4D*, a new *action-conditioned **4D** generative robotic simul
 </div>
 
 ##
-Official PyTorch Implementation. 
-
-❗️The dataset preprocessing and checkpoints for inference will be released in next week, very soon.
+Official PyTorch Implementation.
 
 ## 🚧 TODO List
+- [x] Robo4D-200k Dataset
 - [x] Training and Inference Scripts
 - [x] Visualization Scripts
-- [ ] Data Preprocessing Scripts
-- [ ] Model Checkpoints
+- [x] Data Preprocessing Scripts
+- [x] Model Checkpoints
 
 ## 🚀 Quick Start
 
@@ -77,7 +76,7 @@ data_dir/
 └── train_img_shuffled.txt      ← training episode first_frame ID
 ```
 
-#### Binary mask preparation
+#### Robot-occupancy mask preparation
 Change the `path_to_robo4d200k` at [here](https://github.com/mutianxu/Kinema4D/blob/main/save_mask.py#L10) and [here](https://github.com/mutianxu/Kinema4D/blob/main/save_mask.py#L60), to your previously saved dataset folder path.
 
 Run the command below to preprocess it:
@@ -86,16 +85,14 @@ python save_mask.py
 ```
 
 #### VAE latents preparation
-Encode raw videos, point maps, and their masked variants into VAE latents, and extract CLIP image embeddings from the first frame.
+Encode raw videos, point maps, and their masked variants into VAE latents, and extract CLIP image embeddings from the first frame. For example:
 
-### Usage
-
-**Single machine, 4 GPUs:**
+*Single machine, 4 GPUs:*
  
 ```bash
 python encode_latents.py \
-    --data-dir    /path/to/dataset \
-    --out         /path/to/latents \
+    --data-dir    /path/to/robo4d200k \
+    --out         /path/to/robo4d200k \
     --model-path  ./pretrained/Wan2.1-I2V-14B-480P-Diffusers \
     --num-gpus 4 \
     --max-frames 49 \
@@ -103,13 +100,13 @@ python encode_latents.py \
     --skip-existing
 ```
  
-**Multi-machine (e.g. 4 machines, 8 GPUs each):**
+*Multi-machine (e.g. 4 machines, 8 GPUs each):*
  
 ```bash
 python encode_latents.py \
     --num-machines 4 --machine-id 0 --num-gpus 8 \
-    --data-dir /path/to/dataset \
-    --out      /path/to/latents \
+    --data-dir /path/to/robo4d200k \
+    --out      /path/to/robo4d200k \
     --model-path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers \
     --skip-existing
 ```
@@ -129,64 +126,17 @@ data_dir/
     ├── xxx.pt
 ```
 
----
-<!-- Run the command below to preprocess it:
+After finish processing, the total data volume is ~**7TB**. Please leave sufficient disk space. 
 
-```bash
-python build_wan_dataset.py \
-  --data_dir ./data \ 
-  --out ./data/wan21
-```
-
-####
-Totally 7TB. 
-Once preprocessing is finished, the output directory will be organized as follows:
-
-```
-wan21/
-├── cache/
-├── videos/
-├── first_frames/
-├── pointmap/
-├── pointmap_latents/
-├── prompts.txt
-├── videos.txt
-└── generated_datalist.txt
-``` -->
+### Data pre-processing *from scratch (Optional)*
+In addition, we provide the *full* data pre-processing code in the [data_proc_full](https://github.com/mutianxu/Kinema4D/blob/main/data_proc_full) folder. It includes our whole data pre-processing pipeline on real-world demonstration datasets, associated with the corresponding instructions.
 
 ## 🔥 Training
 
-### Launch Training
-To launch training, we assume all data, mask array, VAE latents are fully prepared. Change the data_root to the Robot4D-200k folder path in `scripts/finetune.sh`, and run the following command:
-```bash
-bash scripts/finetune.sh
-```
-
-**Cross-machine training**: take 4 machines + 8gpus/machine as an example (we have provided the corresponding config `gpu_1,2,3,4.yaml` in `configs_acc` folder). In `finetune.sh`: 
-- Set the `--main_process_ip` into the actual ip address of your master machine for all machines
-- Set the `--machine_rank` into the actual rank of each machine (e.g., 0 for the master machine; 1 or 2 or 3 for other 3 machines)
-- Set the `--num_processes` into 32 for all machines
-- Set the `--num_machines` into 4 for all machines
-- Leave all the other configs unchanged and respectively running the previous command on each machine
-
-
-🌟**NOTE**: At the first-time training, a cache folder for saving text embedding will be created.
-Although the text embedding is not used in our model, we leave the code here to better align with the general video generation model codebase for future explorations on how to better use text beyond action-conditioned simulation, such as text-conditioned task planning.
-After saving all the text embedding successfully, please uncomment the for loop at [here](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/trainer.py#L198) to skip this step in the future training.
-
-### Convert Zero Checkpoint to FP32
-After training, convert the zero checkpoint to fp32 checkpoint for inference. For example, to save the checkpoint of the 5200-th iteration:
-```bash
-python scripts/zero_to_fp32.py ./training/kinema4d/checkpoint-5200 ./training/kinema4d/5200-out --safe_serialization
-
-python get_emb_from_ckpt_all.py ./training/kinema4d/checkpoint-5200
-```
-
 ### Pretrained Model
-Please wait for the update, will be released next week.
-<!-- Our model is developed on top of [Wan2.1 I2V 14B](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers), please download the pretrained model from Hugging Face and place it in the `pretrained` directory as following structure:
+Our model is developed on top of [Wan2.1 I2V 14B](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers) and [4DNeX](https://huggingface.co/FrozenBurning/4DNex-Lora), please download all the pretrained models from Hugging Face and place it in the `pretrained` directory as following structure:
 ```
-4DNeX/
+Kinema4D/
 └── pretrained/
     └── Wan2.1-I2V-14B-480P-Diffusers/
         ├── model_index.json
@@ -196,22 +146,74 @@ Please wait for the update, will be released next week.
         ├── text_encoder/
         ├── tokenizer/
         └── ...
+    └── 4dnex-lora/
+        ├── learnable_domain_embeddings.pt
+        ├── pytorch_lora_weights.safetensors
+        └── ...
 ```
-Then, you may download our pretrained LoRA weights from HuggingFace [here](https://huggingface.co/FrozenBurning/4DNex-Lora) and place it in the `./pretrained` directory:
-```bash
-cd pretrained
-mkdir 4dnex-lora
-cd 4dnex-lora
-huggingface-cli download FrozenBurning/4DNex-Lora --local-dir .
-cd ../..
-export PRETRAINED_LORA_PATH=./pretrained/4dnex-lora
-``` -->
 
-### Inference 
+### Launch Training
+To launch training, we assume all data, mask array, VAE latents are fully prepared. Change the data_root to the Robot4D-200k folder path in `scripts/finetune.sh`, and run the following command:
+```bash
+bash scripts/finetune.sh
+```
+
+**Model-type choice**: We provide our model conditioned on [robot RGB+pointmap](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/models/wan_i2v/demb_samerope_trainer_act_allcond.py) and [only robot pointmap](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/models/wan_i2v/demb_samerope_trainer_act_pmcond.py). 
+
+Generally, to get stable results on our pseudo-annotated robot data (e.g., DROID, Bridge, RT-1), you may choose the condition of robot RGB+pointmap by setting `--model_name wan-i2v-demb-samerope-act` in `finetune.sh` (by default).
+
+As for real-world deployment, to get robust results, we recommend using the condition of robot pointmap to mitigate the projection errors by setting `--model_name wan-i2v-demb-samerope-act-pmcond` in `finetune.sh`.
+
+
+**Cross-machine training**: Take 4 machines + 8gpus/machine as an example (we have provided the corresponding config `gpu_1,2,3,4.yaml` in `configs_acc` folder). In `finetune.sh`: 
+- Set the `--main_process_ip` to the actual ip address of your master machine for all machines
+- Set the `--machine_rank` to the actual rank of each machine (e.g., 0 for the master machine; 1 or 2 or 3 for other 3 machines)
+- Set the `--num_processes` to 32 for all machines
+- Set the `--num_machines` to 4 for all machines
+- Leave all the other configs unchanged and respectively running the previous command on each machine
+
+
+🌟**NOTE**: At the first-time training, a cache folder for saving text embedding will be created.
+Although the text embedding is not used in our model, we leave the code here to better align with the general video generation model codebase for future explorations on how to better use text beyond action-conditioned simulation, such as text-conditioned task planning.
+After saving all the text embedding successfully, please uncomment the for loop at [here](https://github.com/mutianxu/Kinema4D/blob/main/core/finetune/trainer.py#L198) to skip this step in the future training.
+
+### Convert Zero Checkpoint to FP32
+After training, convert the zero checkpoint to fp32 checkpoint for inference. For example, to save the checkpoint of the 5600-th iteration:
+```bash
+python scripts/zero_to_fp32.py ./training/kinema4d/checkpoint-5600 ./training/kinema4d/5600-out --safe_serialization
+
+python get_emb_from_ckpt_all.py ./training/kinema4d/checkpoint-5600
+```
+
+### Inference
+You may download our Kinema4D checkpoints from [here](https://huggingface.co/Minoday/Kinema4D) and place it in the `./training` directory:
+```bash
+mkdir training
+cd training
+mkdir kinema4d_ckpt
+cd kinema4d_ckpt
+hf download Minoday/Kinema4D kinema4d_ckpt --local-dir . --repo-type model
+cd ../..
+export KINEMA4D_CKPT_PATH=./training/kinema4d_ckpt
+```
+
 After setup the environment and pretrained model, you can run the following command to generate full 4D robot-world interactions from a single image, the output video and point map will be saved in the `OUTPUT_DIR` directory. Run the following command:
 ```bash
 export OUTPUT_DIR=./results
-python inference.py --data_path /home/mtxu/new_data/ --video /home/mtxu/new_data/val.txt --out $OUTPUT_DIR --sft_path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers/transformer  --type i2vwbw-demb-samerope-act --mode xyzrgb --lora_path $PRETRAINED_KINEMA4D_PATH --lora_rank 64
+python inference.py --data_path /path/to/robo4d200k/ --video /path/to/robo4d200k/val.txt --out $OUTPUT_DIR --sft_path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers/transformer  --type i2vwbw-demb-samerope-act --mode xyzrgb --lora_path $KINEMA4D_CKPT_PATH --lora_rank 64
+```
+
+If you use the condition of only robot pointmap, simply revise the previous hf dowload command into `hf download Minoday/Kinema4D kinema4d_pmcond_ckpt --local-dir .`, and change `demb_samerope_trainer_act` into `demb_samerope_trainer_act_pmcond` at [here](https://github.com/mutianxu/Kinema4D/blob/main/core/inference/wan.py#L132) and [here](https://github.com/mutianxu/Kinema4D/blob/main/core/inference/wan.py#L176), then run the same command above.
+
+### Sample test
+You may download several samples for testing our model at our [dataset repo](https://huggingface.co/datasets/Minoday/Robo4D-200k) - `sample_test`:
+```bash
+hf download Minoday/Robo4D-200k sample_test --local-dir [YOUR LOCAL DIR to save sample_test] --repo-type dataset
+```
+Then run the following command:
+```bash
+export OUTPUT_DIR=./results
+python inference.py --data_path /path/to/sample_test --video /path/to/sample_test/val_sample.txt --out $OUTPUT_DIR --sft_path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers/transformer  --type i2vwbw-demb-samerope-act --mode xyzrgb --lora_path $KINEMA4D_CKPT_PATH --lora_rank 64
 ```
 
 ### Visualization
@@ -226,6 +228,11 @@ Then, use the viser-viewer to visualize an `.npz` file by running:
 python viser_viewer.py --input ./results/npz_out/xxx.npz
 ```
 
+### Real-world deployment
+Assume you have gained the real-world robot pointmap/RGB, simply refer to VAE latents preparation to get the robot pointmap/RGB VAE latents, and run the inference code to get the final results.
+
+## Contact
+If you have further question, please contact [Mutian XU](mailto:mutian.xu@ntu.edu.sg).
 
 ## 📄 Citation
 
