@@ -204,7 +204,7 @@ export KINEMA4D_CKPT_PATH=./training/kinema4d_ckpt
 After setup the environment and trained models, you can run the following command to generate full 4D robot-world interactions from a single image, the output video and point map will be saved in the `OUTPUT_DIR` directory. Run the following command:
 ```bash
 export OUTPUT_DIR=./results
-python inference.py --data_path /path/to/robo4d200k/ --video /path/to/robo4d200k/val.txt --out $OUTPUT_DIR --sft_path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers/transformer  --type i2vwbw-demb-samerope-act --mode xyzrgb --lora_path $KINEMA4D_CKPT_PATH --lora_rank 64
+python inference.py --data_path /path/to/robo4d200k/ --video /path/to/robo4d200k/val_sel.txt --out $OUTPUT_DIR --sft_path ./pretrained/Wan2.1-I2V-14B-480P-Diffusers/transformer  --type i2vwbw-demb-samerope-act --mode xyzrgb --lora_path $KINEMA4D_CKPT_PATH --lora_rank 64
 ```
 
 If you use the condition of only robot pointmap, simply revise the previous hf dowload command into `hf download Minoday/Kinema4D kinema4d_pmcond_ckpt --local-dir .`, and change `demb_samerope_trainer_act` into `demb_samerope_trainer_act_pmcond` at [here](https://github.com/mutianxu/Kinema4D/blob/main/core/inference/wan.py#L132) and [here](https://github.com/mutianxu/Kinema4D/blob/main/core/inference/wan.py#L176), then run the same command above.
