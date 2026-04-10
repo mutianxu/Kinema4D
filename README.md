@@ -62,7 +62,7 @@ conda install -c conda-forge git-lfs
 conda install -c conda-forge rerun-sdk
 ```
 
-### Data Preparation: Robot4D-200k
+### Data Preparation: Robo4D-200k
 
 #### Download Data
 Please download our **Robo4D-200k** dataset from [here](https://huggingface.co/datasets/Minoday/Robo4D-200k), and upzip all the files into a single dataset folder. 
