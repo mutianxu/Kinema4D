@@ -209,6 +209,8 @@ python inference.py --data_path /path/to/robo4d200k/ --video /path/to/robo4d200k
 
 If you use the condition of only robot pointmap, simply revise the previous hf dowload command into `hf download Minoday/Kinema4D kinema4d_pmcond_ckpt --local-dir .`, and change `demb_samerope_trainer_act` into `demb_samerope_trainer_act_pmcond` at [here](https://github.com/mutianxu/Kinema4D/blob/main/core/inference/wan.py#L132) and [here](https://github.com/mutianxu/Kinema4D/blob/main/core/inference/wan.py#L176), then run the same command above.
 
+🌟*Tips*: It is recommended to use the hyperparameter setting mentioned in our paper to train the model. We also find that the model performance trained by different steps (e.g.: 5600, 6400, 7200, 8000) may vary across samples, so we recommend to save different-step models for the best result.
+
 ### Sample test
 You may download several samples for testing our model at our [dataset repo](https://huggingface.co/datasets/Minoday/Robo4D-200k) - `sample_test`:
 ```bash
