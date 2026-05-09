@@ -55,6 +55,7 @@ We use anaconda or miniconda to manage the python environment:
 conda create -n "kinema4d" python=3.10 -y
 conda activate kinema4d
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# We have tested: pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
 
 # git lfs and rerun
