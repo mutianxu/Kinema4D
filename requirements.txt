@@ -10,3 +10,5 @@ opencv-python-headless
 imageio
 imageio-ffmpeg
 tyro
+timm
+ftfy
